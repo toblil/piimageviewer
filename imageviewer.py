@@ -2,11 +2,25 @@ import os
 import sys
 import time
 import traceback
-from getkey import getkey
+
+import keyboard
+#from getkey import getkey
 from PIL import Image
 
-clear = lambda: os.system('clear')
-DIR_BASE = '/home/pi/Pictures'
+WINDOWS = True
+
+if WINDOWS:
+    DIR_BASE = 'e:/negativbilder'
+    IMAGE_VIEWER_EXEC = "feh"
+    clear = lambda: os.system('cls')
+else:
+    DIR_BASE = '/home/pi/Pictures'
+    IMAGE_VIEWER_EXEC = "feh"
+    clear = lambda: os.system('clear')
+
+def getkey():
+    return keyboard.read_key().strip()
+
 contains_dirs = False
 os.chdir(DIR_BASE)
 while(1):
@@ -43,8 +57,9 @@ while(1):
     #p = sys.stdin.readline()
     p=getkey()
     p = p.strip()
-    
-    feh_command = "feh -r -F <RANDOMIZE> --sort dirname --draw-filename --auto-rotate <DIRECTORY>"
+
+    feh_command = "<FEH> -r -F <RANDOMIZE> --sort dirname --draw-filename --auto-rotate <DIRECTORY>"
+    feh_command = feh_command.replace('<FEH>', IMAGE_VIEWER_EXEC)
     error = False
     randomize = False
     contains_dirs = False
@@ -71,7 +86,7 @@ while(1):
                     #print("Testing dir: " + os.getcwd())
                     contains_dirs = False
                     for dirname in os.listdir('.'):
-                        filename_to_test = os.getcwd() + '/' + dirname 
+                        filename_to_test = os.getcwd() + '/' + dirname
                         #print("Testing filename: " + filename_to_test)
                         if os.path.isdir(filename_to_test):
                             contains_dirs = True
@@ -95,6 +110,11 @@ while(1):
 
     if not error and not contains_dirs and not esc_pressed:
         command = feh_command.replace('<DIRECTORY>', '"' + replace_with + '"')
+        jpgs = []
+        for filename in os.listdir(replace_with):
+            if '.jpg' in filename.lower():
+                jpgs.append(filename)
+
         if randomize:
             command = command.replace('<RANDOMIZE>', '-zD 2.0')
             command = command.replace('--sort dirname ', '')
