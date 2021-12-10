@@ -25,6 +25,10 @@ else:
 def getkey():
     return keyboard.read_key().strip()
 
+LOG_FILE = DIR_BASE + "/../viewlog.txt"
+
+def log(filename):
+    open(LOG_FILE,'at').write('%s|%f|%s\n' % (time.ctime(), time.time(), filename))
 
 terminate = False
 def show_image(filenames):
@@ -67,6 +71,7 @@ def show_image(filenames):
     canvas.pack()
 
     image_on_canvas = canvas.create_image(int((1920-tkimg.width())/2), 0, anchor="nw", image=tkimg)
+    log(filenames[file_index])
 
     while not terminate:
         root.update()
@@ -80,6 +85,7 @@ def show_image(filenames):
             tkimg = ImageTk.PhotoImage(img1)
             canvas.itemconfig(image_on_canvas, image=tkimg)
             canvas.moveto(image_on_canvas, int((1920-tkimg.width())/2), 0)
+            log(filenames[file_index])
         if keyboard.is_pressed('esc'):
             terminate = True
 
