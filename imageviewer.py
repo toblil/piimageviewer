@@ -8,13 +8,17 @@ import tkinter
 import threading
 
 import keyboard
-from getkey import getkey
 from PIL import Image
 
-WINDOWS = False
+WINDOWS = True
+
+if not WINDOWS:
+    from getkey import getkey
+else:
+    import msvcrt
 
 if WINDOWS:
-    DIR_BASE = 'e:/negativbilder'
+    DIR_BASE = r'N:\Negativbilder\Test_Image_Viewer'
     IMAGE_VIEWER_EXEC = "feh"
     clear = lambda: os.system('cls')
 else:
@@ -23,18 +27,24 @@ else:
     clear = lambda: os.system('clear')
 
 def my_getkey():
-    return getkey()
-    #return keyboard.read_key().strip()
+    if terminate_image_show:
+        p = keyboard.read_key().strip()
+    p = keyboard.read_key().strip()
+    if 'ift' in p: #ift for both shift and skift
+        p = keyboard.read_key().strip()
+    if 'esc' in p:
+        p = chr(27)
+    return p
 
 LOG_FILE = DIR_BASE + "/../viewlog.txt"
 
 def log(filename):
     open(LOG_FILE,'at').write('%s|%f|%s\n' % (time.ctime(), time.time(), filename))
 
-terminate = False
+terminate_image_show = False
 def show_image(filenames):
-    global terminate
-    terminate = False
+    global terminate_image_show
+    terminate_image_show = False
     root = tkinter.Tk()
     size = (root.winfo_screenwidth(), root.winfo_screenheight())
     size_str = "%dx%d" % (size[0], size[1])
@@ -55,12 +65,14 @@ def show_image(filenames):
 
         exif = image._getexif()
         #image = ImageOps.exif_transpose(image)
-        if exif[orientation] == 3:
-            image=image.rotate(180, expand=True)
-        elif exif[orientation] == 6:
-            image=image.rotate(270, expand=True)
-        elif exif[orientation] == 8:
-            image=image.rotate(90, expand=True)
+        if exif is not None:
+            if orientation in exif:
+                if exif[orientation] == 3:
+                    image=image.rotate(180, expand=True)
+                elif exif[orientation] == 6:
+                    image=image.rotate(270, expand=True)
+                elif exif[orientation] == 8:
+                    image=image.rotate(90, expand=True)
         return image
 
     file_index = 1
@@ -69,9 +81,10 @@ def show_image(filenames):
     print(filename)
     img1 = Image.open(filename)
     img1 = rotate_image(img1)
-    img1.thumbnail(size, Image.ANTIALIAS)
+    #img1.thumbnail(size, Image.ANTIALIAS)
+    img1 = img1.resize(size)
     draw = ImageDraw.Draw(img1)
-    draw.text((0,0), filename)
+    draw.text((0,0), "%s (%dpx, %dpx)" % (filename, size[0], size[1]))
 
     tkimg = ImageTk.PhotoImage(img1)
     #tkinter.Label(root, image=tkimg)
@@ -81,7 +94,7 @@ def show_image(filenames):
     image_on_canvas = canvas.create_image(int((size[0]-tkimg.width())/2), 0, anchor="nw", image=tkimg)
     log(filenames[file_index])
 
-    while not terminate:
+    while not terminate_image_show:
         root.update()
         if keyboard.is_pressed(' '):  # if key 'q' is pressed
             file_index += 1
@@ -91,19 +104,20 @@ def show_image(filenames):
             filename = filename.replace('\\','/')
             img1 = Image.open(filename)
             img1 = rotate_image(img1)
-            img1.thumbnail(size, Image.ANTIALIAS)
+            #img1.thumbnail(size, Image.ANTIALIAS)
+            img1 = img1.resize(size)
             draw = ImageDraw.Draw(img1)
-            draw.text((0,0), filename)
+            draw.text((0,0), "%s (%dpx, %dpx)" % (filename, size[0], size[1]))
             tkimg = ImageTk.PhotoImage(img1)
             canvas.itemconfig(image_on_canvas, image=tkimg)
             xPos = int((size[0]-tkimg.width())/2)
             yPos = 0
             canvas.tk.call(canvas._w, 'moveto',image_on_canvas,xPos,yPos)
             #canvas.moveto(image_on_canvas, xPos, yPos)
-            
+
             log(filenames[file_index])
         if keyboard.is_pressed('esc'):
-            terminate = True
+            terminate_image_show = True
 
     root.destroy()
 
