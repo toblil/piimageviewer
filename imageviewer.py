@@ -3,15 +3,15 @@ import sys
 import time
 import traceback
 from PIL import Image, ImageTk, ExifTags, ImageOps
+from PIL import ImageDraw
 import tkinter
 import threading
 
 import keyboard
-#from getkey import getkey
+from getkey import getkey
 from PIL import Image
 
-WINDOWS = True
-size = (1920,1080)
+WINDOWS = False
 
 if WINDOWS:
     DIR_BASE = 'e:/negativbilder'
@@ -22,8 +22,9 @@ else:
     IMAGE_VIEWER_EXEC = "feh"
     clear = lambda: os.system('clear')
 
-def getkey():
-    return keyboard.read_key().strip()
+def my_getkey():
+    return getkey()
+    #return keyboard.read_key().strip()
 
 LOG_FILE = DIR_BASE + "/../viewlog.txt"
 
@@ -35,6 +36,8 @@ def show_image(filenames):
     global terminate
     terminate = False
     root = tkinter.Tk()
+    size = (root.winfo_screenwidth(), root.winfo_screenheight())
+    size_str = "%dx%d" % (size[0], size[1])
     root.title("Slide Show")
 
     root.attributes('-topmost', True)
@@ -42,7 +45,7 @@ def show_image(filenames):
     root.attributes('-topmost', False)
     root.attributes('-fullscreen', True)
 
-    root.geometry("1920x1080")
+    root.geometry(size_str)
     root.config(bg="black")
 
     def rotate_image(image):
@@ -51,26 +54,31 @@ def show_image(filenames):
                 break
 
         exif = image._getexif()
-        image = ImageOps.exif_transpose(image)
-        #if exif[orientation] == 3:
-        #    image=image.rotate(180, expand=True)
-        #elif exif[orientation] == 6:
-        #    image=image.rotate(270, expand=True)
-        #elif exif[orientation] == 8:
-        #    image=image.rotate(90, expand=True)
+        #image = ImageOps.exif_transpose(image)
+        if exif[orientation] == 3:
+            image=image.rotate(180, expand=True)
+        elif exif[orientation] == 6:
+            image=image.rotate(270, expand=True)
+        elif exif[orientation] == 8:
+            image=image.rotate(90, expand=True)
         return image
 
     file_index = 1
-    img1 = Image.open(filenames[file_index])
+    filename = filenames[file_index]
+    filename = filename.replace('\\','/')
+    print(filename)
+    img1 = Image.open(filename)
     img1 = rotate_image(img1)
     img1.thumbnail(size, Image.ANTIALIAS)
+    draw = ImageDraw.Draw(img1)
+    draw.text((0,0), filename)
 
     tkimg = ImageTk.PhotoImage(img1)
     #tkinter.Label(root, image=tkimg)
-    canvas = tkinter.Canvas(root, width = 1920, height = 1080)
+    canvas = tkinter.Canvas(root, width = size[0], height = size[1])
     canvas.pack()
 
-    image_on_canvas = canvas.create_image(int((1920-tkimg.width())/2), 0, anchor="nw", image=tkimg)
+    image_on_canvas = canvas.create_image(int((size[0]-tkimg.width())/2), 0, anchor="nw", image=tkimg)
     log(filenames[file_index])
 
     while not terminate:
@@ -79,12 +87,20 @@ def show_image(filenames):
             file_index += 1
             if file_index >= len(filenames):
                 file_index = 0
-            img1 = Image.open(filenames[file_index])
+            filename = filenames[file_index]
+            filename = filename.replace('\\','/')
+            img1 = Image.open(filename)
             img1 = rotate_image(img1)
             img1.thumbnail(size, Image.ANTIALIAS)
+            draw = ImageDraw.Draw(img1)
+            draw.text((0,0), filename)
             tkimg = ImageTk.PhotoImage(img1)
             canvas.itemconfig(image_on_canvas, image=tkimg)
-            canvas.moveto(image_on_canvas, int((1920-tkimg.width())/2), 0)
+            xPos = int((size[0]-tkimg.width())/2)
+            yPos = 0
+            canvas.tk.call(canvas._w, 'moveto',image_on_canvas,xPos,yPos)
+            #canvas.moveto(image_on_canvas, xPos, yPos)
+            
             log(filenames[file_index])
         if keyboard.is_pressed('esc'):
             terminate = True
@@ -123,10 +139,10 @@ while(1):
     print("    0 - VISA ALLA")
     print("    Q - AVSLUTA")
     print("")
-    #print("    SKRIV SIFFRA OCH ENTER: ")
+    print("    SKRIV SIFFRA OCH ENTER: ")
     #p = sys.stdin.readline()
-    p=getkey()
-    p = p.strip()
+    p=my_getkey()
+    p=p.strip()
 
     feh_command = "<FEH> -r -F <RANDOMIZE> --sort dirname --draw-filename --auto-rotate <DIRECTORY>"
     feh_command = feh_command.replace('<FEH>', IMAGE_VIEWER_EXEC)
@@ -174,6 +190,7 @@ while(1):
                 error = True
         except:
             print("FEL...")
+            print(p)
             print(traceback.format_exc())
             time.sleep(0.5)
             error = True
@@ -183,7 +200,7 @@ while(1):
         jpgs = []
         for filename in os.listdir(replace_with):
             if '.jpg' in filename.lower():
-                jpgs.append(replace_with + "\\" + filename)
+                jpgs.append(os.getcwd() + "\\" + replace_with + "\\" + filename)
 
         show_image(jpgs)
         esc_pressed = True
